@@ -8,6 +8,7 @@ import streamlit as st
 from config import FEATURIZER_SETS
 from core.state import WorkflowState
 from core.llm_client import create_llm_client
+from core.theme import inject_theme, page_hero
 
 
 def _get_state() -> WorkflowState:
@@ -18,8 +19,8 @@ def _log(msg: str):
     st.session_state.agent_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
-st.title("⚙️ Feature Engineering")
-st.caption("Convert composition strings to numerical features for ML using matminer")
+inject_theme()
+page_hero("Feature Engineering", "Transform HEA compositions into 142 physics-informed features using matminer (Magpie, Yang, ValenceOrbital)", "⚙️")
 
 state = _get_state()
 

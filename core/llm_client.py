@@ -59,6 +59,21 @@ class BaseLLMClient(ABC):
     def provider(self) -> str:
         ...
 
+    def build_assistant_message(self, response: "LLMResponse") -> dict:
+        """Build an assistant message dict for message history (provider-specific format)."""
+        return {"role": "assistant", "content": response.raw_content}
+
+    def build_tool_result_messages(self, tool_results: list[dict]) -> list[dict]:
+        """Build tool result message(s) for message history.
+
+        tool_results: list of {"tool_use_id": str, "name": str, "content": str}
+        Returns a list of message dicts (Anthropic uses one user message; OpenAI uses one per result).
+        """
+        return [{"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": tr["tool_use_id"], "content": tr["content"]}
+            for tr in tool_results
+        ]}]
+
 
 # ── Anthropic ─────────────────────────────────────────────────────────────────
 
@@ -117,15 +132,57 @@ class OpenAIClient(BaseLLMClient):
     def provider(self) -> str:
         return "openai"
 
+    # Models that require max_completion_tokens instead of max_tokens
+    _MAX_COMPLETION_TOKENS_MODELS = ("o1", "o3", "gpt-5")
+
+    def build_assistant_message(self, response: "LLMResponse") -> dict:
+        """Store assistant turn in OpenAI-native format (tool_calls field)."""
+        msg: dict[str, Any] = {
+            "role": "assistant",
+            "content": response.text or None,
+        }
+        if response.tool_calls:
+            msg["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.name,
+                        "arguments": json.dumps(tc.input),
+                    },
+                }
+                for tc in response.tool_calls
+            ]
+        return msg
+
+    def build_tool_result_messages(self, tool_results: list[dict]) -> list[dict]:
+        """Each tool result is a separate role='tool' message for OpenAI."""
+        return [
+            {
+                "role": "tool",
+                "tool_call_id": tr["tool_use_id"],
+                "content": str(tr["content"]),
+            }
+            for tr in tool_results
+        ]
+
     def chat(self, messages, tools, system, max_tokens=4096) -> LLMResponse:
-        # OpenAI uses a "system" message at the start of messages list
+        # Messages are already in OpenAI format (built by build_assistant_message /
+        # build_tool_result_messages), just prepend the system message.
         oai_messages = [{"role": "system", "content": system}] + messages
+
+        # Newer OpenAI models (o-series, GPT-5.x) require max_completion_tokens
+        token_param = (
+            "max_completion_tokens"
+            if any(self.model.startswith(p) for p in self._MAX_COMPLETION_TOKENS_MODELS)
+            else "max_tokens"
+        )
 
         kwargs: dict[str, Any] = dict(
             model=self.model,
-            max_tokens=max_tokens,
             messages=oai_messages,
         )
+        kwargs[token_param] = max_tokens
         if tools:
             kwargs["tools"] = _anthropic_tools_to_openai(tools)
             kwargs["tool_choice"] = "auto"
@@ -147,23 +204,11 @@ class OpenAIClient(BaseLLMClient):
         finish_reason = response.choices[0].finish_reason
         stop_reason = "tool_use" if finish_reason == "tool_calls" else "end_turn"
 
-        # Build raw_content compatible with Anthropic message format for history
-        raw_content: list[dict] = []
-        if text:
-            raw_content.append({"type": "text", "text": text})
-        for tc in (msg.tool_calls or []):
-            raw_content.append({
-                "type": "tool_use",
-                "id": tc.id,
-                "name": tc.function.name,
-                "input": json.loads(tc.function.arguments),
-            })
-
         return LLMResponse(
             text=text,
             tool_calls=tool_calls,
             stop_reason=stop_reason,
-            raw_content=raw_content,
+            raw_content=None,  # not used; history built via build_assistant_message()
         )
 
 

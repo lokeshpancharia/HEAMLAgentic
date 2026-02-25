@@ -8,6 +8,7 @@ import streamlit as st
 from config import AUTOML_MODELS, AUTOML_DEFAULT_TRIALS, AUTOML_DEFAULT_CV_FOLDS
 from core.state import WorkflowState
 from core.llm_client import create_llm_client
+from core.theme import inject_theme, page_hero
 
 
 def _get_state() -> WorkflowState:
@@ -18,8 +19,8 @@ def _log(msg: str):
     st.session_state.agent_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
-st.title("🤖 AutoML")
-st.caption("Find the optimal ML model with automated hyperparameter optimization")
+inject_theme()
+page_hero("AutoML", "Automated model selection across RF · XGBoost · LightGBM · GBM with Optuna hyperparameter optimization", "🤖")
 
 state = _get_state()
 

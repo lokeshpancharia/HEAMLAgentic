@@ -70,11 +70,8 @@ class BaseAgent:
                 system=self.system_prompt,
             )
 
-            # Append assistant turn to history
-            self.messages.append({
-                "role": "assistant",
-                "content": response.raw_content,
-            })
+            # Append assistant turn in provider-native format
+            self.messages.append(self.llm_client.build_assistant_message(response))
 
             if response.stop_reason == "end_turn":
                 self._log("Task complete.")
@@ -87,11 +84,13 @@ class BaseAgent:
                     result = self.registry.dispatch(tc.name, tc.input)
                     self._log(f"Tool {tc.name} result: {str(result)[:200]}")
                     tool_results.append({
-                        "type": "tool_result",
                         "tool_use_id": tc.id,
+                        "name": tc.name,
                         "content": str(result),
                     })
-                self.messages.append({"role": "user", "content": tool_results})
+                # Append tool results in provider-native format (one or many messages)
+                for msg in self.llm_client.build_tool_result_messages(tool_results):
+                    self.messages.append(msg)
             else:
                 # Unexpected stop reason — treat as done
                 break

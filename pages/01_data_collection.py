@@ -9,6 +9,7 @@ import streamlit as st
 from config import RAW_DIR, HEA_PROPERTIES
 from core.state import WorkflowState
 from core.llm_client import create_llm_client
+from core.theme import inject_theme, page_hero
 
 
 def _get_state() -> WorkflowState:
@@ -19,8 +20,8 @@ def _log(msg: str):
     st.session_state.agent_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
-st.title("🔬 Data Collection")
-st.caption("Upload your dataset or collect data from literature databases")
+inject_theme()
+page_hero("Data Collection", "Upload your HEA dataset or mine data from literature databases & materials repositories", "🔬")
 
 state = _get_state()
 

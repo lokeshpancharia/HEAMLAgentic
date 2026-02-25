@@ -6,14 +6,15 @@ from datetime import datetime
 import streamlit as st
 
 from core.state import WorkflowState
+from core.theme import inject_theme, page_hero
 
 
 def _get_state() -> WorkflowState:
     return st.session_state.workflow_state
 
 
-st.title("🔮 Predict")
-st.caption("Predict material properties for new HEA compositions")
+inject_theme()
+page_hero("Predict", "Predict hardness, strength, and other properties for new HEA compositions with SHAP waterfall explanation", "🔮")
 
 state = _get_state()
 

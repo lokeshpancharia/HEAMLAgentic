@@ -63,6 +63,13 @@ EVALUATION_TOOL_DEFINITIONS = [
                 "metrics": {"type": "object", "description": "Metrics dict from compute_metrics"},
                 "top_features": {
                     "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "feature": {"type": "string"},
+                            "mean_abs_shap": {"type": "number"},
+                        },
+                    },
                     "description": "Top features list from generate_shap_analysis",
                 },
             },

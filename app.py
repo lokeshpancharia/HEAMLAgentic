@@ -15,6 +15,7 @@ import streamlit as st
 
 from core.state import WorkflowState
 from core.llm_client import PROVIDER_MODELS
+from core.theme import inject_theme
 
 # ── Page configuration ────────────────────────────────────────────────────────
 st.set_page_config(
@@ -23,6 +24,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+inject_theme()
 
 # ── Session state initialization ──────────────────────────────────────────────
 if "workflow_state" not in st.session_state:
@@ -33,13 +36,21 @@ if "agent_logs" not in st.session_state:
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("⚗️ HEAMLAgentic")
-    st.caption("High Entropy Alloy ML Discovery")
+    st.markdown("""
+<div style="text-align:center; padding: 0.5rem 0 1rem;">
+    <div style="font-size:2.4rem; margin-bottom:0.2rem;">⚗️</div>
+    <div style="font-size:1.1rem; font-weight:700; background:linear-gradient(135deg,#1e90ff,#00d4aa);
+                -webkit-background-clip:text; -webkit-text-fill-color:transparent;">HEAMLAgentic</div>
+    <div style="font-size:0.72rem; color:#7a9cc0; letter-spacing:0.08em; text-transform:uppercase; margin-top:2px;">
+        High Entropy Alloy · ML Discovery
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     st.divider()
 
     # LLM Provider selection
-    st.subheader("LLM Provider")
+    st.markdown("**🤖 LLM Provider**")
     provider = st.selectbox(
         "Provider",
         options=list(PROVIDER_MODELS.keys()),
@@ -47,12 +58,14 @@ with st.sidebar:
             st.session_state.workflow_state.llm_provider
         ),
         key="provider_select",
+        label_visibility="collapsed",
     )
     model = st.selectbox(
         "Model",
         options=PROVIDER_MODELS[provider],
         index=0,
         key="model_select",
+        label_visibility="collapsed",
     )
 
     # Update state when provider/model changes
@@ -63,8 +76,8 @@ with st.sidebar:
 
     st.divider()
 
-    # Workflow status
-    st.subheader("Workflow Status")
+    # Workflow status metrics
+    st.markdown("**📊 Workflow Status**")
     state: WorkflowState = st.session_state.workflow_state
 
     def _status_icon(value) -> str:
@@ -72,28 +85,38 @@ with st.sidebar:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Data Points", state.n_raw_samples or state.n_samples or "—")
+        st.metric("Samples", state.n_raw_samples or state.n_samples or "—")
         st.metric("Features", state.n_features or "—")
     with col2:
-        st.metric("Best Model", state.best_model_type or "—")
+        st.metric("Model", state.best_model_type or "—")
         st.metric(
-            "Best R²",
+            "CV R²",
             f"{state.best_cv_r2:.3f}" if state.best_cv_r2 is not None else "—"
         )
 
     st.divider()
 
     # Steps checklist
-    st.subheader("Steps")
-    st.write(f"{_status_icon(state.raw_data_path or state.n_raw_samples)} 1. Data Ready")
-    st.write(f"{_status_icon(state.processed_data_path)} 2. Features Engineered")
-    st.write(f"{_status_icon(state.best_model_path)} 3. Model Trained")
-    st.write(f"{_status_icon(state.report_path)} 4. Report Generated")
+    st.markdown("**🔬 Pipeline Steps**")
+    steps = [
+        (state.raw_data_path or state.n_raw_samples, "Data Ready"),
+        (state.processed_data_path, "Features Engineered"),
+        (state.best_model_path, "Model Trained"),
+        (state.report_path, "Report Generated"),
+    ]
+    for i, (done, label) in enumerate(steps, 1):
+        icon = "✅" if done else "⬜"
+        color = "#00d4aa" if done else "#7a9cc0"
+        st.markdown(
+            f'<div class="step-item"><span>{icon}</span>'
+            f'<span style="color:{color}; font-size:0.83rem;">{i}. {label}</span></div>',
+            unsafe_allow_html=True,
+        )
 
     st.divider()
 
     # Reset button
-    if st.button("Reset Workflow", type="secondary", use_container_width=True):
+    if st.button("↺  Reset Workflow", type="secondary", use_container_width=True):
         st.session_state.workflow_state.reset()
         st.session_state.agent_logs = []
         st.rerun()

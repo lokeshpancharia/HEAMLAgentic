@@ -7,6 +7,7 @@ import streamlit as st
 
 from core.state import WorkflowState
 from core.llm_client import create_llm_client
+from core.theme import inject_theme, page_hero
 
 
 def _get_state() -> WorkflowState:
@@ -17,8 +18,8 @@ def _log(msg: str):
     st.session_state.agent_logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
-st.title("📊 Model Evaluation")
-st.caption("Evaluate model performance, feature importance (SHAP), and generate report")
+inject_theme()
+page_hero("Model Evaluation", "R² · MAE · RMSE with bootstrap CI · SHAP feature importance · Parity plot · HTML report", "📊")
 
 state = _get_state()
 
